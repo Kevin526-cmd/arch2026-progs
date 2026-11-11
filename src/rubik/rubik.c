@@ -3,18 +3,19 @@
 #include "rubik.h"
 #include "tables.h"
 
-static int heuristic(uint16_t P, uint16_t O, uint8_t ca, uint8_t cb)
+static int heuristic(uint16_t P, uint16_t O, uint8_t ca, uint8_t cb, uint8_t cc)
 {
     int a = ca & 3;
     int b = cb & 3;
-    int index = (P << 3) + P + (a << 1) + a + b;
-    int h_po = dist_po[index];
+    int c = cc & 3;
+    int index = P * 27 + a * 9 + b * 3 + c;
+    int h_po = (dist_po[index >> 1] >> ((index & 1) << 2)) & 0xf;
     int h_o = dist_o[O];
     return h_po > h_o ? h_po : h_o;
 }
 
 static uint16_t stP[16], stO[16];
-static uint8_t stA[16], stB[16];
+static uint8_t stA[16], stB[16], stC[16];
 static uint8_t cur_face[16];
 static uint8_t cur_turn[16];
 static uint8_t path_face[16];
@@ -24,6 +25,7 @@ static int search_iter(uint16_t P,
                        uint16_t O,
                        uint8_t ca,
                        uint8_t cb,
+                       uint8_t cc,
                        int bound,
                        int *next_bound)
 {
@@ -33,6 +35,7 @@ static int search_iter(uint16_t P,
     stO[0] = O;
     stA[0] = ca;
     stB[0] = cb;
+    stC[0] = cc;
     cur_face[0] = 0;
     cur_turn[0] = 0;
     if (P == 0 && O == 0)
@@ -63,15 +66,18 @@ static int search_iter(uint16_t P,
             stO[d + 1] = orientation[face][stO[d]];
             stA[d + 1] = cubie_move[face][stA[d]];
             stB[d + 1] = cubie_move[face][stB[d]];
+            stC[d + 1] = cubie_move[face][stC[d]];
         } else {
             stP[d + 1] = permutation[face][stP[d + 1]];
             stO[d + 1] = orientation[face][stO[d + 1]];
             stA[d + 1] = cubie_move[face][stA[d + 1]];
             stB[d + 1] = cubie_move[face][stB[d + 1]];
+            stC[d + 1] = cubie_move[face][stC[d + 1]];
         }
 
-        int f =
-            d + 1 + heuristic(stP[d + 1], stO[d + 1], stA[d + 1], stB[d + 1]);
+        int f = d + 1 +
+                heuristic(stP[d + 1], stO[d + 1], stA[d + 1], stB[d + 1],
+                          stC[d + 1]);
         if (f > bound) {
             if (f < min_f)
                 min_f = f;
@@ -89,13 +95,12 @@ static int search_iter(uint16_t P,
     return -1;
 }
 
-static int solve(uint16_t P, uint16_t O, uint8_t ca, uint8_t cb)
+static int solve(uint16_t P, uint16_t O, uint8_t ca, uint8_t cb, uint8_t cc)
 {
-    int bound = heuristic(P, O, ca, cb);
-
+    int bound = heuristic(P, O, ca, cb, cc);
     for (;;) {
         int next_bound;
-        int n = search_iter(P, O, ca, cb, bound, &next_bound);
+        int n = search_iter(P, O, ca, cb, cc, bound, &next_bound);
         if (n >= 0)
             return n;
         bound = next_bound;
@@ -106,7 +111,8 @@ static int parse(const char *s,
                  uint16_t *P,
                  uint16_t *O,
                  uint8_t *ca,
-                 uint8_t *cb)
+                 uint8_t *cb,
+                 uint8_t *cc)
 {
     uint8_t p[7], o[7];
     unsigned seen = 0, osum = 0;
@@ -131,6 +137,8 @@ static int parse(const char *s,
             *ca = (uint8_t) ((i << 2) + t);
         if (c == 1)
             *cb = (uint8_t) ((i << 2) + t);
+        if (c == 2)
+            *cc = (uint8_t) ((i << 2) + t);
     }
 
     while (osum >= 3)
@@ -160,12 +168,12 @@ static const char face_name[3] = {'R', 'B', 'D'};
 int rubik_solve(const char *state, char *out, size_t cap)
 {
     uint16_t P, O;
-    uint8_t ca = 0, cb = 0;
+    uint8_t ca = 0, cb = 0, cc = 0;
 
-    if (parse(state, &P, &O, &ca, &cb) < 0)
+    if (parse(state, &P, &O, &ca, &cb, &cc) < 0)
         return -1;
 
-    int n = solve(P, O, ca, cb);
+    int n = solve(P, O, ca, cb, cc);
 
     size_t need = 1;
     for (int k = 0; k < n; ++k)
