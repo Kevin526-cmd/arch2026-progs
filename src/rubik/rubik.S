@@ -10,7 +10,8 @@ stB:       .zero 16
 cur_face:  .zero 16
 cur_turn:  .zero 16
 path_face: .zero 16
-path_turn: .zero 16  
+path_turn: .zero 16
+stC:       .zero 16
 
     .align 2
 rows:
@@ -85,7 +86,11 @@ skip_a:
     bne  t5, a2, skip_b
     mv   s3, a1
 skip_b:
-
+    li   a2, 2
+    bne  t5, a2, skip_c
+    la   a2, stC
+    sb   a1, 0(a2)
+skip_c:
     addi t0, t0, 1             
     addi t1, t1, 1
     addi t2, t2, 1
@@ -227,16 +232,28 @@ done:
     .size   rubik_solve_asm, .-rubik_solve_asm
     
 heur:
+    lbu  a7, 160(s9)          
     andi t0, a2, 3            
-    andi t1, a3, 3           
-    slli t2, a0, 3              
-    add  t2, t2, a0             
-    slli t3, t0, 1              
-    add  t3, t3, t0            
+    andi t1, a3, 3            
+    andi a7, a7, 3            
+    slli t2, a0, 5    
+    slli t3, a0, 2            
+    sub  t2, t2, t3
+    sub  t2, t2, a0           
+    slli t3, t0, 3      
+    add  t3, t3, t0           
     add  t2, t2, t3
-    add  t2, t2, t1
-    add  t2, t2, s10           
-    lbu  t2, 0(t2)           
+    slli t3, t1, 1
+    add  t3, t3, t1           
+    add  t2, t2, t3
+    add  t2, t2, a7           
+    srli t3, t2, 1      
+    add  t3, t3, s10
+    lbu  t3, 0(t3)
+    andi t2, t2, 1            
+    slli t2, t2, 2      
+    srl  t3, t3, t2
+    andi t2, t3, 15      
     add  t3, s11, a1           
     lbu  t3, 0(t3)             
     mv   a0, t2
@@ -333,20 +350,34 @@ src_ok:
     sh   a1, 34(a5)
     sb   a2, 65(a4)
     sb   a3, 81(a4)
-
-    andi t0, a2, 3           
-    andi t1, a3, 3           
-    slli t2, a0, 3
-    add  t2, t2, a0          
-    slli t3, t0, 1
-    add  t3, t3, t0          
+    lbu  a7, 160(t5)
+    add  a7, t4, a7
+    lbu  a7, 0(a7)
+    sb   a7, 161(a4)
+    andi t0, a2, 3
+    andi t1, a3, 3
+    andi a7, a7, 3
+    slli t2, a0, 5
+    slli t3, a0, 2
+    sub  t2, t2, t3
+    sub  t2, t2, a0
+    slli t3, t0, 3
+    add  t3, t3, t0
     add  t2, t2, t3
-    add  t2, t2, t1
-    add  t2, t2, s10
-    add  t3, s11, a1        
-    lbu  t2, 0(t2)
-    lbu  a0, 0(t3)
-    addi t6, s4, 1           
+    slli t3, t1, 1
+    add  t3, t3, t1
+    add  t2, t2, t3
+    add  t2, t2, a7
+    srli t3, t2, 1
+    add  t3, t3, s10
+    lbu  t3, 0(t3)
+    andi t2, t2, 1
+    slli t2, t2, 2
+    srl  t3, t3, t2
+    andi t2, t3, 15
+    add  t3, s11, a1
+    lbu  a0, 0(t3)  
+    addi t6, s4, 1         
     bgeu a0, t2, h_ok
     mv   a0, t2
 
