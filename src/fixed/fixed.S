@@ -51,9 +51,9 @@ op3_asm:
 q_mul_asm:
     li      a4, 0                  # lo
     li      a5, 0                  # hi
-    mv      a2, a0                 # multiplier, lo
-    li      a3, 0                  # multiplier，high
-    mv      a6, a1                 # multiplicand
+    mv      a2, a0                 # multiplicand, lo
+    li      a3, 0                  # multiplicand，high
+    mv      a6, a1                 # multiplier
     beqz    a6, 3f
 1:  andi    t0, a6, 1              
     beqz    t0, 2f                 
